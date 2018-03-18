@@ -1,72 +1,81 @@
-#include "pageTable.h"
+#include "lruStack.h"
+
+lru_stack* construct_lru(int cap)
+{
+     lru_stack* new_lru=(node *)malloc(sizeof(lru_stack));
+     new_lru->capacity=cap;
+     new_lru->node_count=0;
+     new_lru->back=NULL;
+     new_lru->front=NULL;
+     return new_lru;
+}
 
 //pop bottom value off stack
-void pop_bottom(page_table *table)
+void pop_bottom(lru_stack *table)
 {
     //general case
-    if(table->page_count>1)
+    if(table->node_count>1)
     {
-        page * end=table->back;
+        node * end=table->back;
         table->back=end->back;
         table->back->next=NULL;
         free(end);
-        table->page_count--;
+        table->node_count--;
     }
     //when there is 1 element
-    else if(table->page_count==1)
+    else if(table->node_count==1)
     {
-        page * end=table->back;
+        node * end=table->back;
         table->front=NULL;
         table->back=NULL;
         free(end);
-        table->page_count--;
+        table->node_count--;
         
     }
 }
 
 //push onto top of stack
-void push(page_table* table, page* p)
+void push(lru_stack* table, node* p)
 {
-    if(table->page_count>0)
+    if(table->node_count>0)
     {
-        //remove least recently used page
-        if(table->page_count==table->capacity)
+        //remove least recently used node
+        if(table->node_count==table->capacity)
             pop_bottom(table);
         //push onto stack
         p->back=NULL;
         p->next=table->front;
         table->front->back=p;
         table->front=p;
-        //upadate page count
-        table->page_count++;
+        //upadate node count
+        table->node_count++;
     }
-    else if(table->page_count==0)
+    else if(table->node_count==0)
     {
         p->back=NULL;
         p->next=NULL;
         table->front=p;
         table->back=p;
-        table->page_count++;
     }
 }
 
-//create new page struct
-page* construct_page(int page_n, int frame_n, page* n, page*b)
+//create new node struct
+node* construct_node(int node_n, int frame_n, node* n, node*b)
 {
-    page* new_page=(page *)malloc(sizeof(page));
-    new_page->page_number=page_n;
-    new_page->frame_number=frame_n;
-    new_page->next=n;
-    new_page->back=b;
-    return new_page;
+    node* new_node=(node *)malloc(sizeof(node));
+    new_node->node_number=node_n;
+    new_node->frame_number=frame_n;
+    new_node->next=n;
+    new_node->back=b;
+    return new_node;
 }
 //find noed in stack
-page* find(page_table *table, int page_num)
+node* find(lru_stack *table, int node_num)
 {
-    page * current=table->front;
+    node * current=table->front;
     while(current)
     {
-        if (current->page_number==page_num)
+        if (current->node_number==node_num)
         {
             return current;
         }
@@ -76,7 +85,7 @@ page* find(page_table *table, int page_num)
 }
 
 //move node p in stack to top of stack
-void move_to_top(page_table* table, page* p)
+void move_to_top(lru_stack* table, node* p)
 {
     if((table->front != p)
        &&table->back!=p)
@@ -95,10 +104,10 @@ void move_to_top(page_table* table, page* p)
 }
 
 //delete the stack
-void delete_table_contents(page_table* table)
+void delete_table_contents(lru_stack* table)
 {
-    page * current= table->front;
-    page* next;
+    node * current= table->front;
+    node* next;
     table->front=NULL;
     table->back=NULL;
 
