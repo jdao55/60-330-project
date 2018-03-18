@@ -46,6 +46,7 @@ void push(page_table* table, page* p)
         p->next=NULL;
         table->front=p;
         table->back=p;
+        table->page_count++;
     }
 }
 
