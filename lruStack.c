@@ -37,7 +37,7 @@ void pop_bottom(lru_stack *table)
 //push onto top of stack
 void push(lru_stack* table, node* p)
 {
-    if(table->node_count>0)
+    if(table->node_count>=table->capacity)
     {
         //remove least recently used node
         if(table->node_count==table->capacity)
