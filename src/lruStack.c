@@ -2,7 +2,7 @@
 
 lru_stack* construct_lru(int cap)
 {
-     lru_stack* new_lru=(node *)malloc(sizeof(lru_stack));
+     lru_stack* new_lru=(lru_stack *)malloc(sizeof(lru_stack));
      new_lru->capacity=cap;
      new_lru->node_count=0;
      new_lru->back=NULL;
