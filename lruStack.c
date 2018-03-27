@@ -63,7 +63,7 @@ void push(lru_stack* table, node* p)
 node* construct_node(int node_n, int frame_n, node* n, node*b)
 {
     node* new_node=(node *)malloc(sizeof(node));
-    new_node->node_number=node_n;
+    new_node->page_number=node_n;
     new_node->frame_number=frame_n;
     new_node->next=n;
     new_node->back=b;
@@ -75,7 +75,7 @@ node* find(lru_stack *table, int node_num)
     node * current=table->front;
     while(current)
     {
-        if (current->node_number==node_num)
+        if (current->page_number==node_num)
         {
             return current;
         }

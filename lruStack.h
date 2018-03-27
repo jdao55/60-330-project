@@ -4,7 +4,7 @@
 typedef struct node node;
 struct node
 {
-    int node_number;
+    int page_number;
     int frame_number;
     node *next;
     node *back;
