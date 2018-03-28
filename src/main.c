@@ -30,7 +30,7 @@ int main()
     for(i=0;i<1000;i++)
     {
         err=fscanf(address_file,"%d\n", &address);
-        if(err<0) perror("Error with file IO");
+        if(err<=0) perror("Error with file IO");
         offset=address & 0xFF;
         page_num=address>>8;
         //check tlb
@@ -76,7 +76,7 @@ void load_memory(int page_num,lru_stack* ptable,int mem_status[],char phys_memor
     int err;
     err=fseek(backing_store, page_num*256, SEEK_SET);
     err=fread(buffer,1, 256,backing_store);
-    if(err<0)
+    if(err<256)
         perror("Error with file IO");
     fclose(backing_store);
     
