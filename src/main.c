@@ -34,13 +34,13 @@ int main()
         offset=address & 0xFF;
         page_num=address>>8;
         //check tlb
-        if((frame=check_lru(page_num, tlb_table)))
+        if((frame=check_lru(page_num, tlb_table))<0)
         {
             print_output(address, frame, offset,physical_memory);
             tlb_hit_count++;
         }
         //check page table
-        else if((address =check_lru(page_num, page_table)))
+        else if((frame =check_lru(page_num, page_table))<0)
         {
             print_output(address, frame, offset,physical_memory);
             push(tlb_table, construct_node(page_num, frame, NULL, NULL));
@@ -52,6 +52,7 @@ int main()
             //update tlb
             push(tlb_table, page_table->front);
             page_fault_count++;
+            print_output(address, page_table->front->frame_number, offset,physical_memory);
         }
     }
     print_output_stats(tlb_hit_count, page_fault_count);
@@ -102,7 +103,7 @@ int check_lru(int page_num, lru_stack *tlb)
         return frame->frame_number;
     }
     else
-        return 0;
+        return -1;
 }
 
 void print_output(int addr,int frame, int offset, char memory[][256])
