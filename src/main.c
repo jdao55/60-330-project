@@ -2,9 +2,10 @@
 #include <stdlib.h>
 #include <memory.h>
 #include "lruStack.h"
-
+#include <time.h>
 //returns idex to 1st free 256 block of memory
 int find_memory_space(int mem_status[128]);
+void init_memory(char phys_memory[][256],int mem_status[],lru_stack* tlb,lru_stack* ptable);
 
 //loads memory from backing store updates page table
 void load_memory(int page_num,lru_stack* ptablem,int mem_status[],char phys_memory[][256]);
@@ -13,12 +14,13 @@ void load_memory(int page_num,lru_stack* ptablem,int mem_status[],char phys_memo
 //return frame# on success 0 otherwise
 int check_lru(int page_num, lru_stack *tlb);//TODO push found entries to top
 
-void print_output(int addr,int frame, int offset, char memory[][256]);
-void print_output_stats(int tlb_hit, int page_table_miss);
+void print_output(int addr,int frame, int offset, char memory[][256], FILE ** ofile);
+void print_output_stats(int tlb_hit, int page_table_miss,FILE ** ofile);
 
 int main()
 {
     FILE * address_file=fopen("addresses.txt", "r");
+    FILE * out_file=fopen("ouput.txt", "w");
     char physical_memory[128][256];
     int physical_memory_status[128];//whether spot in memory is empty
     size_t i, page_fault_count=0, tlb_hit_count=0;
@@ -26,6 +28,7 @@ int main()
 
     lru_stack *tlb_table=construct_lru(16);
     lru_stack *page_table=construct_lru(128);
+    init_memory(physical_memory, physical_memory_status,tlb_table, page_table);
     int err;
     for(i=0;i<1000;i++)
     {
@@ -34,31 +37,43 @@ int main()
         offset=address & 0xFF;
         page_num=address>>8;
         //check tlb
-        if((frame=check_lru(page_num, tlb_table))<0)
+        if((frame=check_lru(page_num, tlb_table))>=0)
         {
-            print_output(address, frame, offset,physical_memory);
+            fflush(stdout);
+            node * page_node=find(page_table, page_num);
+            move_to_top(page_table, page_node);
+            print_output(address, frame, offset,physical_memory,&out_file);
             tlb_hit_count++;
         }
+        
         //check page table
-        else if((frame =check_lru(page_num, page_table))<0)
+        else if((frame =check_lru(page_num, page_table))>=0)
         {
-            print_output(address, frame, offset,physical_memory);
+            fflush(stdout);
+            print_output(address, frame, offset,physical_memory,&out_file);
             push(tlb_table, construct_node(page_num, frame, NULL, NULL));
         }
         //load from backing sore update page table and tlb
         else
         {
+            fflush(stdout);
             load_memory(page_num, page_table, physical_memory_status, physical_memory);
             //update tlb
-            push(tlb_table, page_table->front);
+            push(tlb_table,
+                 construct_node(page_table->front->page_number,
+                                page_table->front->frame_number, NULL, NULL));
             page_fault_count++;
-            print_output(address, page_table->front->frame_number, offset,physical_memory);
+            print_output(address, page_table->front->frame_number, offset,physical_memory,&out_file);
+            
         }
+        
     }
-    print_output_stats(tlb_hit_count, page_fault_count);
+    fclose(address_file);
+    print_output_stats(tlb_hit_count, page_fault_count,&out_file);
+ 
 }
 
-int find_memory_space(int mem_status[128])
+int find_memory_space(int mem_status[])
 {
     for(int i=0;i<128;i++)
     {
@@ -106,13 +121,39 @@ int check_lru(int page_num, lru_stack *tlb)
         return -1;
 }
 
-void print_output(int addr,int frame, int offset, char memory[][256])
+void print_output(int addr,int frame, int offset, char memory[][256],FILE ** ofile)
 {
     int phys_addr=(frame<<8)|offset;
-    printf("Virtual address: %d Physical address: %d Value: %d", addr, phys_addr, memory[frame][offset]);
+    fprintf(*ofile,"Virtual address: %d Physical address: %d Value: %d\n", addr, phys_addr, memory[frame][offset]);
 }
 
-void print_output_stats(int tlb_hit, int page_table_miss)
+void print_output_stats(int tlb_hit, int page_table_miss,FILE ** ofile)
 {
-    printf("TLB HITS: %d page miss: %d",tlb_hit,page_table_miss);
+    fprintf(*ofile,"Number of Translated Addresses=1000\n\
+Page Faults = %d\n\
+Page Fault Rate= %.3f\n\
+TLB Hits = %d\n\
+TLB git Rate = %.3f\n",page_table_miss, page_table_miss/1000.0, tlb_hit, tlb_hit/1000.0);
+}
+
+void init_memory(char phys_memory[][256],int mem_status[],lru_stack* tlb,lru_stack* ptable)
+{
+    FILE * backing_store=fopen("BACKING_STORE.bin", "r");
+
+    int err=fread(phys_memory,1, 32768,backing_store);
+    if(err<256)
+        perror("Error with file IO");
+    fclose(backing_store);
+    int i;
+    for(i=0;i<128;i++)
+    {
+        mem_status[i]=1;
+    }
+    for(i=127;i>=0;i--)
+    {
+        push(ptable, construct_node(i, i, NULL, NULL));
+        if (i>=112)
+            push(tlb, construct_node(i, i, NULL, NULL));
+    }
+    
 }

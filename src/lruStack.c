@@ -56,6 +56,7 @@ void push(lru_stack* table, node* p)
         p->next=NULL;
         table->front=p;
         table->back=p;
+        table->node_count++;
     }
 }
 
@@ -88,10 +89,11 @@ node* find(lru_stack *table, int node_num)
 void move_to_top(lru_stack* table, node* p)
 {
     if((table->front != p)
-       &&table->back!=p)
+       && (table->back != p))
     {
         p->back->next=p->next;
         p->next->back=p->back;
+        table->node_count--;
         push(table, p);
     }
     else if(table->back==p)
@@ -99,6 +101,7 @@ void move_to_top(lru_stack* table, node* p)
         //update back of table to 2nd last element and push last element
         table->back=table->back->back;
         table->back->next=NULL;
+        table->node_count--;
         push(table, p);
     }
 }
