@@ -28,7 +28,6 @@ int main()
 
     lru_stack *tlb_table=construct_lru(16);
     lru_stack *page_table=construct_lru(128);
-    init_memory(physical_memory, physical_memory_status,tlb_table, page_table);
     int err;
     for(i=0;i<1000;i++)
     {
@@ -39,7 +38,6 @@ int main()
         //check tlb
         if((frame=check_lru(page_num, tlb_table))>=0)
         {
-            fflush(stdout);
             node * page_node=find(page_table, page_num);
             move_to_top(page_table, page_node);
             print_output(address, frame, offset,physical_memory,&out_file);
@@ -47,16 +45,15 @@ int main()
         }
         
         //check page table
-        else if((frame =check_lru(page_num, page_table))>=0)
+        else if((frame = check_lru(page_num, page_table))>=0)
         {
-            fflush(stdout);
+  
             print_output(address, frame, offset,physical_memory,&out_file);
             push(tlb_table, construct_node(page_num, frame, NULL, NULL));
         }
         //load from backing sore update page table and tlb
         else
         {
-            fflush(stdout);
             load_memory(page_num, page_table, physical_memory_status, physical_memory);
             //update tlb
             push(tlb_table,
@@ -134,26 +131,4 @@ Page Faults = %d\n\
 Page Fault Rate= %.3f\n\
 TLB Hits = %d\n\
 TLB git Rate = %.3f\n",page_table_miss, page_table_miss/1000.0, tlb_hit, tlb_hit/1000.0);
-}
-
-void init_memory(char phys_memory[][256],int mem_status[],lru_stack* tlb,lru_stack* ptable)
-{
-    FILE * backing_store=fopen("BACKING_STORE.bin", "r");
-
-    int err=fread(phys_memory,1, 32768,backing_store);
-    if(err<256)
-        perror("Error with file IO");
-    fclose(backing_store);
-    int i;
-    for(i=0;i<128;i++)
-    {
-        mem_status[i]=1;
-    }
-    for(i=127;i>=0;i--)
-    {
-        push(ptable, construct_node(i, i, NULL, NULL));
-        if (i>=112)
-            push(tlb, construct_node(i, i, NULL, NULL));
-    }
-    
 }

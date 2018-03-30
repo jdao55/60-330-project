@@ -23,6 +23,5 @@ void pop_bottom(lru_stack *table);
 void push(lru_stack *table, node* p);
 node* find(lru_stack* table,int node_num);
 void move_to_top(lru_stack* table, node* p);
-void delete_node(node* n);
 void delete_table_contents(lru_stack* table);
 #endif
