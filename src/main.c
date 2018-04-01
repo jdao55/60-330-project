@@ -3,38 +3,49 @@
 #include <memory.h>
 #include "lruStack.h"
 #include <time.h>
-//returns idex to 1st free 256 block of memory
+//returns index to 1st free 256 block of memory
 int find_memory_space(int mem_status[128]);
-void init_memory(char phys_memory[][256],int mem_status[],lru_stack* tlb,lru_stack* ptable);
 
 //loads memory from backing store updates page table
 void load_memory(int page_num,lru_stack* ptablem,int mem_status[],char phys_memory[][256]);
 
 //check if node with page_num is in lru stack
-//return frame# on success 0 otherwise
+//return frame# on success -1 otherwise
 int check_lru(int page_num, lru_stack *tlb);//TODO push found entries to top
 
+//prints output for single address to ofile
 void print_output(int addr,int frame, int offset, char memory[][256], FILE ** ofile);
+
+//prints excuetion results(tlb hit rate etc) to ofile
 void print_output_stats(int tlb_hit, int page_table_miss,FILE ** ofile);
 
 int main()
 {
     FILE * address_file=fopen("addresses.txt", "r");
     FILE * out_file=fopen("ouput.txt", "w");
+
+    //char array to simulate physical memory (2d for easier access)
     char physical_memory[128][256];
-    int physical_memory_status[128];//whether spot in memory is empty
+    //whether spot in memory is empty
+    int physical_memory_status[128];
     size_t i, page_fault_count=0, tlb_hit_count=0;
     int address, offset,page_num, frame;
 
     lru_stack *tlb_table=construct_lru(16);
     lru_stack *page_table=construct_lru(128);
     int err;
+
+    //processs 1000 adresses from addresses.txt
     for(i=0;i<1000;i++)
     {
         err=fscanf(address_file,"%d\n", &address);
         if(err<=0) perror("Error with file IO");
-        offset=address & 0xFF;
-        page_num=address>>8;
+
+
+        offset = address & 0xFF;
+        page_num = address>>8;
+
+
         //check tlb
         if((frame=check_lru(page_num, tlb_table))>=0)
         {
@@ -56,8 +67,7 @@ int main()
         {
             load_memory(page_num, page_table, physical_memory_status, physical_memory);
             //update tlb
-            push(tlb_table,
-                 construct_node(page_table->front->page_number,
+            push(tlb_table,construct_node(page_table->front->page_number,
                                 page_table->front->frame_number, NULL, NULL));
             page_fault_count++;
             print_output(address, page_table->front->frame_number, offset,physical_memory,&out_file);
@@ -86,7 +96,9 @@ void load_memory(int page_num,lru_stack* ptable,int mem_status[],char phys_memor
     char buffer[256];
     int mem_space;
     int err;
+    //seek to page location
     err=fseek(backing_store, page_num*256, SEEK_SET);
+    //read 256 bytes
     err=fread(buffer,1, 256,backing_store);
     if(err<256)
         perror("Error with file IO");
