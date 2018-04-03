@@ -111,10 +111,10 @@ void load_memory(int page_num,lru_stack* ptable, size_t *pr,int mem_status[], ch
     char buffer[256];
     int mem_space;
     //seek to page location
-    int err=fseek(backing_store, page_num*256, SEEK_SET);
+    fseek(backing_store, page_num*256, SEEK_SET);
 
     //load the page
-    err=fread(buffer, 1, 256,backing_store);
+    fread(buffer, 1, 256,backing_store);
     /*if(err<256)
     {
 		

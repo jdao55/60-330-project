@@ -1,7 +1,7 @@
 CC=gcc
 IDIR=../src/
 BINDIR=../bin/
-CFlAGS=-Wall -Wextra -march=native -O3 -I
+CFlAGS=-w -march=native -O3 -I
 
 project: lruStack
 	@echo "Compiling project.."
