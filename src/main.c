@@ -7,45 +7,43 @@
 int find_memory_space(int mem_status[128]);
 
 //loads memory from backing store updates page table
-void load_memory(int page_num,lru_stack* ptablem,int mem_status[],char phys_memory[][256]);
+void load_memory(int page_num,lru_stack* ptablem,size_t* pr,int mem_status[],char phys_memory[][256]);
 
 //check if node with page_num is in lru stack
 //return frame# on success -1 otherwise
 int check_lru(int page_num, lru_stack *tlb);//TODO push found entries to top
 
 //prints output for single address to ofile
-void print_output(int addr,int frame, int offset, char memory[][256], FILE ** ofile);
+void print_output(int addr,int frame, int offset,char memory[][256], FILE ** ofile);
 
 //prints excuetion results(tlb hit rate etc) to ofile
-void print_output_stats(int tlb_hit, int page_table_miss,FILE ** ofile);
+void print_output_stats(int num_addr,int tlb_hit, int page_table_miss, int stat,FILE ** ofile);
 
-int main()
+int main(int argc, char** argv)
 {
-    FILE * address_file=fopen("addresses.txt", "r");
+    if(argc<1)
+    {
+        fprintf(stderr, "not enough args \n project <address file>");
+    }
+    FILE * address_file=fopen(argv[1], "r");
     FILE * out_file=fopen("ouput.txt", "w");
 
     //char array to simulate physical memory (2d for easier access)
     char physical_memory[128][256];
     //whether spot in memory is empty
     int physical_memory_status[128];
-    size_t i, page_fault_count=0, tlb_hit_count=0;
+    size_t num_addr,page_fault_count=0, tlb_hit_count=0, page_replacemnts=0;
     int address, offset,page_num, frame;
 
     lru_stack *tlb_table=construct_lru(16);
     lru_stack *page_table=construct_lru(128);
-    int err;
 
-    //processs 1000 adresses from addresses.txt
-    for(i=0;i<1000;i++)
+    //processs adresses from addresses.txt
+    while(fscanf(address_file,"%d\n", &address)!=EOF)
     {
-        err=fscanf(address_file,"%d\n", &address);
-        if(err<=0) perror("Error with file IO");
-
-
         offset = address & 0xFF;
         page_num = address>>8;
-
-
+        num_addr++;
         //check tlb
         if((frame=check_lru(page_num, tlb_table))>=0)
         {
@@ -65,7 +63,7 @@ int main()
         //load from backing sore update page table and tlb
         else
         {
-            load_memory(page_num, page_table, physical_memory_status, physical_memory);
+            load_memory(page_num, page_table, &page_replacemnts,physical_memory_status, physical_memory);
             //update tlb
             push(tlb_table,construct_node(page_table->front->page_number,
                                 page_table->front->frame_number, NULL, NULL));
@@ -76,7 +74,7 @@ int main()
         
     }
     fclose(address_file);
-    print_output_stats(tlb_hit_count, page_fault_count,&out_file);
+    print_output_stats(num_addr,tlb_hit_count, page_fault_count,page_replacemnts,&out_file);
  
 }
 
@@ -90,7 +88,7 @@ int find_memory_space(int mem_status[])
     return -1;
 }
 
-void load_memory(int page_num,lru_stack* ptable,int mem_status[],char phys_memory[][256])
+void load_memory(int page_num,lru_stack* ptable, size_t *pr,int mem_status[], char phys_memory[][256])
 {
     FILE * backing_store=fopen("BACKING_STORE.bin", "r");
     char buffer[256];
@@ -106,7 +104,10 @@ void load_memory(int page_num,lru_stack* ptable,int mem_status[],char phys_memor
     
     //find free memspace if one exists
     if((mem_space = find_memory_space(mem_status)) < 0)
+    {
         mem_space=ptable->back->frame_number;
+        (*pr)++;
+    }
         
     //set space to occupied
     mem_status[mem_space]=1;
@@ -136,11 +137,24 @@ void print_output(int addr,int frame, int offset, char memory[][256],FILE ** ofi
     fprintf(*ofile,"Virtual address: %d Physical address: %d Value: %d\n", addr, phys_addr, memory[frame][offset]);
 }
 
-void print_output_stats(int tlb_hit, int page_table_miss,FILE ** ofile)
+void print_output_stats(int num_addr, int tlb_hit, int page_table_miss, int stat,FILE ** ofile)
 {
-    fprintf(*ofile,"Number of Translated Addresses=1000\n\
+    int page_hit =1000-tlb_hit-page_table_miss;
+    fprintf(*ofile,"Number of Translated Addresses=%d\n\
 Page Faults = %d\n\
 Page Fault Rate= %.3f\n\
 TLB Hits = %d\n\
-TLB git Rate = %.3f\n",page_table_miss, page_table_miss/1000.0, tlb_hit, tlb_hit/1000.0);
+TLB git Rate = %.3f\n\
+Page table Hits = %d\n\
+Page table Hit rate= %.3f\n\
+Page Relplacements = %d", num_addr,page_table_miss, page_table_miss/1000.0, tlb_hit, tlb_hit/1000.0, page_hit, page_hit/1000.00,stat);
+
+    printf("Number of Translated Addresses=%d\n\
+Page Faults = %d\n\
+Page Fault Rate= %.3f\n\
+TLB Hits = %d\n\
+TLB git Rate = %.3f\n\
+Page table Hits = %d\n\
+Page table Hit rate= %.3f\n\
+Page Relplacements = %d\n", num_addr,page_table_miss, page_table_miss/1000.0, tlb_hit, tlb_hit/1000.0, page_hit, page_hit/1000.00,stat);
 }
