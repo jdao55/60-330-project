@@ -47,7 +47,7 @@ void push(lru_stack* table, node* p)
         p->next=table->front;
         table->front->back=p;
         table->front=p;
-        //upadate node count
+        //update node count
         table->node_count++;
     }
     else if(table->node_count==0)

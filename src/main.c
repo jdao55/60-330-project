@@ -3,6 +3,7 @@
 #include <memory.h>
 #include "lruStack.h"
 #include <time.h>
+
 //returns index to 1st free 256 block of memory
 int find_memory_space(int mem_status[128]);
 
@@ -21,18 +22,32 @@ void print_output_stats(int num_addr,int tlb_hit, int page_table_miss, int stat,
 
 int main(int argc, char** argv)
 {
-    if(argc<1)
+    if(argc<2)
     {
         fprintf(stderr, "not enough args \n project <address file>");
+		return 0;
     }
     FILE * address_file=fopen(argv[1], "r");
     FILE * out_file=fopen("ouput.txt", "w");
 
+	if (address_file == NULL)
+	{
+		perror("Unable to open address file");
+		return 0;
+	}
+
+	if (out_file == NULL)
+	{
+		perror("Unable to create output file");
+		fclose(address_file);
+		return 0;
+	}
+
     //char array to simulate physical memory (2d for easier access)
-    char physical_memory[128][256];
+    char physical_memory[128][256] = {0};
     //whether spot in memory is empty
-    int physical_memory_status[128];
-    size_t num_addr,page_fault_count=0, tlb_hit_count=0, page_replacemnts=0;
+    int physical_memory_status[128] = {0};
+    size_t num_addr = 0,page_fault_count=0, tlb_hit_count=0, page_replacements=0;
     int address, offset,page_num, frame;
 
     lru_stack *tlb_table=construct_lru(16);
@@ -63,7 +78,7 @@ int main(int argc, char** argv)
         //load from backing sore update page table and tlb
         else
         {
-            load_memory(page_num, page_table, &page_replacemnts,physical_memory_status, physical_memory);
+            load_memory(page_num, page_table, &page_replacements,physical_memory_status, physical_memory);
             //update tlb
             push(tlb_table,construct_node(page_table->front->page_number,
                                 page_table->front->frame_number, NULL, NULL));
@@ -73,9 +88,11 @@ int main(int argc, char** argv)
         }
         
     }
-    fclose(address_file);
-    print_output_stats(num_addr,tlb_hit_count, page_fault_count,page_replacemnts,&out_file);
- 
+
+	fclose(address_file);
+	print_output_stats(num_addr,tlb_hit_count, page_fault_count,page_replacements,&out_file);
+
+	fclose(out_file);
 }
 
 int find_memory_space(int mem_status[])
@@ -90,16 +107,18 @@ int find_memory_space(int mem_status[])
 
 void load_memory(int page_num,lru_stack* ptable, size_t *pr,int mem_status[], char phys_memory[][256])
 {
-    FILE * backing_store=fopen("BACKING_STORE.bin", "r");
+    FILE * backing_store=fopen("BACKING_STORE.bin", "rb");
     char buffer[256];
     int mem_space;
-    int err;
     //seek to page location
-    err=fseek(backing_store, page_num*256, SEEK_SET);
-    //read 256 bytes
-    err=fread(buffer,1, 256,backing_store);
-    if(err<256)
-        perror("Error with file IO");
+    int err=fseek(backing_store, page_num*256, SEEK_SET);
+
+    //load the page
+    err=fread(buffer, 1, 256,backing_store);
+    /*if(err<256)
+    {
+		
+    }*/
     fclose(backing_store);
     
     //find free memspace if one exists
@@ -153,8 +172,8 @@ Page Relplacements = %d", num_addr,page_table_miss, page_table_miss/1000.0, tlb_
 Page Faults = %d\n\
 Page Fault Rate= %.3f\n\
 TLB Hits = %d\n\
-TLB git Rate = %.3f\n\
+TLB Hit Rate = %.3f\n\
 Page table Hits = %d\n\
 Page table Hit rate= %.3f\n\
-Page Relplacements = %d\n", num_addr,page_table_miss, page_table_miss/1000.0, tlb_hit, tlb_hit/1000.0, page_hit, page_hit/1000.00,stat);
+Page Replacements = %d\n", num_addr,page_table_miss, page_table_miss/1000.0, tlb_hit, tlb_hit/1000.0, page_hit, page_hit/1000.00,stat);
 }
